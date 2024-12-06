@@ -16,9 +16,9 @@ Test with Geforce RTX3060
 ### To build on Windows:
 - Install CUDA 11.8.
 - Download prject files from github.
-- Run CMAKE using int the CudaDLL-VS-Files.
-    Example cmake: cmake -G "Visual Studio 16 2019" -A x64 -T cuda="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8" -DCMAKE_CUDA_FLAGS="-allow-unsupported-compiler" -DRTX30XX=ON -B build
-DRTX either on or off if you havce a RTX3000 series card
+- Run CMAKE using in the CudaDLL-VS-Files.  
+    Example cmake: cmake -G "Visual Studio 16 2019" -A x64 -T cuda="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8" -DCMAKE_CUDA_FLAGS="-allow-unsupported-compiler" -DRTX30XX=ON -B build  
+DRTX either on or off if you havce a RTX3000 series card  
 - In the visual studio project that is then generated, right click on the volume render project to generate the DLL file.
 - Move this DLL file then to the Plugins folder in the unity project.
 - The unity program relies on a cloud file in the streaming assets folder. This can be access from the MRPNN researchers google drive at [OneDrive](https://1drv.ms/f/c/c6d71596bc679f33/QjOfZ7yWFdcggMZJBAAAAAAATuOe1hNOeD_D7Q)
