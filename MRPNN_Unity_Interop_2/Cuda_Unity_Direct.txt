@@ -4311,3 +4311,13 @@ Failed to unmap resource: 2 resource not mapped
 Count = 0
 Failed to unmap resource: 2 resource not mapped
 Count = 1
+Loading
+D3D11 device and DXGI Adapter initialized
+CUDA interop initialized successfully and resource added to vector
+CUDA interop initialized successfully and resource added to vector
+Stored function pointer for texture update
+Attempting to load model from: C:/Tumi/Projects/Github/MRPNN-Unity/MRPNN_Unity_Interop_2/Assets/StreamingAssets/CLOUD0.bin
+Failed to unmap resource: 2 resource not mapped
+Count = 0
+Failed to unmap resource: 2 resource not mapped
+Count = 1

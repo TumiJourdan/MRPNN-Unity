@@ -1,2 +1,2 @@
-full call  (last 100 calls): 9.72126 ms
-render camera call (last 100 calls): 8.59784 ms
+full call  (last 100 calls): 11.2679 ms
+render camera call (last 100 calls): 10.25 ms
