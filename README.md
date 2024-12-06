@@ -13,7 +13,7 @@ This project integrates the neural network developed by [Jinkai Hu, Chengzhong Y
 - Windows
 - Nvidia GPU that supports sm_75 or sm_86
 - Visual Studio 16 2019
-Test with Geforce RTX3060
+Tested with Geforce RTX3060
 
 ### To build on Windows:
 - Install CUDA 11.8.
@@ -26,4 +26,4 @@ DRTX either on or off if you have an RTX3000 series card
 - The unity program relies on a cloud file in the streaming assets folder. This can be access from the MRPNN researchers google drive at [OneDrive](https://1drv.ms/f/c/c6d71596bc679f33/QjOfZ7yWFdcggMZJBAAAAAAATuOe1hNOeD_D7Q)
 - Open the unity project, majority of settings are on the GetCloud.cs script that is attached to the camera in the scene.
 - Make sure that the correct cloud model is selected in the drop down Cloud_to_render.
-- NB. Make sure the DLL in the plugins has the Load on StartUp option checked. 
+- NB. Make sure the DLL in the plugins has the "Load on StartUp" option checked. 
