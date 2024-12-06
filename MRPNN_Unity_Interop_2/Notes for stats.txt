@@ -1,0 +1,12 @@
+no render cam calls
+full call  (last 100 calls): 8.85459 ms
+render camera call (last 100 calls): 0.234593 ms
+
+calling with 124 marching steps 512
+full call  (last 100 calls): 7.09859 ms
+render camera call (last 100 calls): 6.67713 ms
+
+512 raymarching steps
+halved samples fed to network, sampling amount is not something to be trifled with
+full call  (last 100 calls): 9.74114 ms
+render camera call (last 100 calls): 9.35419 ms

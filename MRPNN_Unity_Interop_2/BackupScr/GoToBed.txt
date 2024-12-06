@@ -1,0 +1,4 @@
+Texture Width: 256
+Texture height: 256
+Texture Width: 256
+Texture height: 256

@@ -1,0 +1,62 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using System.Runtime.InteropServices;
+using D3D11_Cuda_NS;
+using System;
+public class TestD3D11 : MonoBehaviour
+{
+
+
+    public static Texture2D textureToProcess;
+    public Material debug_texture_mat;
+
+
+    private delegate void TextureUpdateCallback(System.IntPtr textureHandle);
+    [SerializeField]
+    private int width = 512;  // Width of the texture
+    public int height = 512; // Height of the texture
+    // Start is called before the first frame update
+    void Start()
+    {
+
+        textureToProcess = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        textureToProcess.Apply();
+        debug_texture_mat.SetTexture("_MainTex", textureToProcess);
+        StartCoroutine(WaitAndPrint());
+
+    }
+
+    IEnumerator WaitAndPrint()
+    {
+        // suspend execution for 5 seconds
+        Debug.Log("Running from coroutine");
+        yield return new WaitForSeconds(2);
+        // Set up the callback
+        Cuda_d3d11_Interop.SetTextureFromUnity(Marshal.GetFunctionPointerForDelegate<TextureUpdateCallback>(OnTextureUpdated));
+        Cuda_d3d11_Interop.InitCudaInterop(textureToProcess.GetNativeTexturePtr());
+        Cuda_d3d11_Interop.ProcessTextureWithCuda();
+        debug_texture_mat.SetTexture("_MainTex", textureToProcess);
+    }
+
+    [AOT.MonoPInvokeCallback(typeof(TextureUpdateCallback))]
+    private static void OnTextureUpdated(System.IntPtr textureHandle)
+    {
+        Debug.Log("Texture updated by CUDA");
+        textureToProcess.Apply(false);
+        // Force a material update
+        if (Instance != null && Instance.debug_texture_mat != null)
+        {
+            Instance.debug_texture_mat.SetTexture("_MainTex", textureToProcess);
+        }
+    }
+
+    // Singleton instance for accessing non-static members in static context
+    private static TestD3D11 Instance;
+
+    void Awake()
+    {
+        Instance = this;
+    }
+
+}

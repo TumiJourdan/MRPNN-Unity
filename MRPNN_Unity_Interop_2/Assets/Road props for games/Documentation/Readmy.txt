@@ -1,0 +1,46 @@
+A small test set of road environment objects.
+The package was created with a low polygon count and optimized texture atlases.
+
+24 road environment 3D Models. Non overlapping UV Layout map provided in the package.
+Game Ready model with excellent detail.
+1 textures in a box
+Low Poly
+
+Meshes (FBX):
+Polygon count of all: 1758
+RoadSign_A_circle - 25  polygons
+RoadSign_Polygon - 24
+RoadSign_Triangular - 19
+BarrierFence - 217
+BarrierFence2 - 251
+BarrierFence_L - 126
+BarrierFence_T - 242
+Tetrapod - 28
+TetrapodUp - 70
+Benche - 159
+Urn - 20
+Urn_2 - 48
+Border - 8
+Border_2 - 11
+Hemisphere - 52
+SpeedBump - 70
+SpeedBump_2 - 18
+TrafficCone - 125
+Piles - 10
+Road_slab - 72
+Road_slab_2 - 22
+Road_bumper - 14
+PlasticSignalBollard - 38
+PlasticSignalBollard_2 - 87
+
+512 and 2k resolution textures include:
+diffuse
+
+Tris only geometries (no quads/ngons).
+
+Easily customizable: UV unwrapped geometries, so you can create new Textures (or modify the existing ones) using the UV Layout maps provided in the package.
+If you have any personal wishes about the model, you can contact me by:
+e-mail: lerrmar@mail.ru
+Instagram: @lerrmar
+You can also leave your wishes in the comments.
+P.S. Thank you for buying my models.

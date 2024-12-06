@@ -1,0 +1,311 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+
+#include <cuda.h>
+#include <d3d11.h>
+#include <cuda_runtime.h>
+#include <cuda_d3d11_interop.h>
+#include "IUnityGraphics.h"
+#include "IUnityInterface.h"
+#include "IUnityGraphicsD3D11.h"
+
+
+#include "device_launch_parameters.h"
+using namespace std;
+
+
+class Logger {
+public:
+    Logger(const std::string& filename) {
+        file.open(filename, std::ios::out | std::ios::app);  // Open in append mode
+        if (!file) {
+            std::cerr << "Failed to open log file: " << filename << std::endl;
+        }
+    }
+
+    ~Logger() {
+        if (file.is_open()) {
+            file.close();
+        }
+    }
+
+    void log(const std::string& message) {
+        if (file.is_open()) {
+            file << message << std::endl;
+            file.flush();  // Force data to write to disk
+        }
+    }
+
+    // Overload to log numeric values
+    void log(float value) {
+        if (file.is_open()) {
+            file << value << std::endl;
+            file.flush();  // Force data to write to disk
+        }
+    }
+    void logArray(float* array, int width, int height) {
+        if (file.is_open()) {
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    file << array[i * width + j]; // Access the element in a 1D manner
+                    if (j < width - 1) {
+                        file << ","; // Add a comma if not the last element in the row
+                    }
+                }
+                file << std::endl; // New line after each row
+            }
+            file.flush(); // Force data to write to disk
+        }
+    }
+
+private:
+    std::ofstream file;
+};
+
+// Function pointer for Unity's texture update callback
+static IUnityInterfaces* s_UnityInterfaces = nullptr;
+static IUnityGraphics* s_Graphics = nullptr;
+static UnityGfxRenderer s_RendererType = kUnityGfxRendererNull;
+static ID3D11Device* g_D3D11Device = nullptr;
+static IDXGIAdapter* g_DXGIAdapter = nullptr;
+
+// Function pointer for Unity's texture update callback
+static void(UNITY_INTERFACE_API* UpdateTextureFromUnity)(void* textureHandle) = nullptr;
+
+// CUDA graphics resource
+cudaGraphicsResource* cudaResource = nullptr;
+
+// Logger (assuming you have a logger class)
+Logger logger("Cuda_Unity_Direct.txt");
+
+// Graphics device event callback
+static void UNITY_INTERFACE_API OnGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
+{
+    switch (eventType)
+    {
+    case kUnityGfxDeviceEventInitialize:
+    {
+        s_RendererType = s_Graphics->GetRenderer();
+        if (s_RendererType == kUnityGfxRendererD3D11)
+        {
+            g_D3D11Device = s_UnityInterfaces->Get<IUnityGraphicsD3D11>()->GetDevice();
+            if (g_D3D11Device)
+            {
+                IDXGIDevice* dxgiDevice = nullptr;
+                if (SUCCEEDED(g_D3D11Device->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice)))
+                {
+                    dxgiDevice->GetAdapter(&g_DXGIAdapter);
+                    dxgiDevice->Release();
+                }
+            }
+            logger.log("D3D11 device and DXGI Adapter initialized");
+        }
+        break;
+    }
+    case kUnityGfxDeviceEventShutdown:
+    {
+        s_RendererType = kUnityGfxRendererNull;
+        if (g_DXGIAdapter)
+        {
+            g_DXGIAdapter->Release();
+            g_DXGIAdapter = nullptr;
+        }
+        g_D3D11Device = nullptr;
+        break;
+    }
+    case kUnityGfxDeviceEventBeforeReset:
+    case kUnityGfxDeviceEventAfterReset:
+        // Handle these events if necessary
+        break;
+    };
+}
+
+// Plugin load event
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginLoad(IUnityInterfaces * unityInterfaces)
+{
+    logger.log("Loading");
+    s_UnityInterfaces = unityInterfaces;
+    s_Graphics = s_UnityInterfaces->Get<IUnityGraphics>();
+    s_Graphics->RegisterDeviceEventCallback(OnGraphicsDeviceEvent);
+
+    // Run OnGraphicsDeviceEvent(initialize) manually on plugin load
+    OnGraphicsDeviceEvent(kUnityGfxDeviceEventInitialize);
+}
+
+// Plugin unload event
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API UnityPluginUnload()
+{
+    s_Graphics->UnregisterDeviceEventCallback(OnGraphicsDeviceEvent);
+}
+
+// Set texture update callback
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetTextureFromUnity(void* textureHandle)
+{
+    UpdateTextureFromUnity = (void(UNITY_INTERFACE_API*)(void*))textureHandle;
+    logger.log("Stored function pointer for texture update");
+}
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API GetTextureInfo(ID3D11Texture2D * texture)
+{
+    if (!texture)
+    {
+        logger.log("Texture pointer is null");
+        return;
+    }
+
+    D3D11_TEXTURE2D_DESC desc;
+    texture->GetDesc(&desc);
+
+    logger.log("Texture Info:");
+    logger.log("Width: " + std::to_string(desc.Width));
+    logger.log("Height: " + std::to_string(desc.Height));
+    logger.log("MipLevels: " + std::to_string(desc.MipLevels));
+    logger.log("ArraySize: " + std::to_string(desc.ArraySize));
+    logger.log("Format: " + std::to_string(desc.Format));
+    logger.log("SampleCount: " + std::to_string(desc.SampleDesc.Count));
+    logger.log("Usage: " + std::to_string(desc.Usage));
+    logger.log("BindFlags: " + std::to_string(desc.BindFlags));
+    logger.log("CPUAccessFlags: " + std::to_string(desc.CPUAccessFlags));
+    logger.log("MiscFlags: " + std::to_string(desc.MiscFlags));
+}
+
+__global__ void setTextureToBlack(cudaSurfaceObject_t surface, int width, int height)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x < width && y < height)
+    {
+        uchar4 color;
+        if (x < width / 2)
+        {
+            color = make_uchar4(255, 0, 0, 255);  // Red for left half
+        }
+        else
+        {
+            color = make_uchar4(0, 0, 0, 255);  // Black for right half
+        }
+        surf2Dwrite(color, surface, x * sizeof(uchar4), y);
+    }
+}
+// Process texture with CUDA
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API ProcessTextureWithCuda()
+{
+    if (cudaResource == nullptr || UpdateTextureFromUnity == nullptr)
+    {
+        logger.log("CUDA resource or update callback is null");
+        return;
+    }
+
+    // Map the resource
+    cudaError_t err = cudaGraphicsMapResources(1, &cudaResource, 0);
+    if (err != cudaSuccess) {
+        logger.log("Failed to map resource: " + std::string(cudaGetErrorString(err)));
+        return;
+    }
+
+    cudaArray* cuArray;
+    err = cudaGraphicsSubResourceGetMappedArray(&cuArray, cudaResource, 0, 0);
+    if (err != cudaSuccess) {
+        logger.log("Failed to get mapped resource array: " + std::string(cudaGetErrorString(err)));
+        cudaGraphicsUnmapResources(1, &cudaResource, 0);
+        return;
+    }
+
+    // Get array dimensions
+    cudaExtent extent;
+    cudaChannelFormatDesc channelDesc;
+    err = cudaArrayGetInfo(&channelDesc, &extent, nullptr, cuArray);
+    if (err != cudaSuccess) {
+        logger.log("Failed to get array info: " + std::string(cudaGetErrorString(err)));
+        cudaGraphicsUnmapResources(1, &cudaResource, 0);
+        return;
+    }
+
+    // Log correct dimensions
+    int width = extent.width;
+    int height = extent.height;
+
+    logger.log("Texture dimensions: " + std::to_string(width) + "x" + std::to_string(height));
+
+    // Create surface object
+    cudaResourceDesc resDesc;
+    memset(&resDesc, 0, sizeof(resDesc));
+    resDesc.resType = cudaResourceTypeArray;
+    resDesc.res.array.array = cuArray;
+
+    cudaSurfaceObject_t surfaceObject;
+    err = cudaCreateSurfaceObject(&surfaceObject, &resDesc);
+    if (err != cudaSuccess) {
+        logger.log("Failed to create surface object: " + std::string(cudaGetErrorString(err)));
+        cudaGraphicsUnmapResources(1, &cudaResource, 0);
+        return;
+    }
+
+    // Launch the kernel
+    dim3 blockSize(16, 16);
+    dim3 gridSize((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
+    setTextureToBlack << <gridSize, blockSize >> > (surfaceObject, width, height);
+
+    cudaDeviceSynchronize();
+
+    // Check for kernel launch errors
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        logger.log("Kernel launch failed: " + std::string(cudaGetErrorString(err)));
+    }
+
+    // Destroy surface object
+    cudaDestroySurfaceObject(surfaceObject);
+
+    err = cudaGraphicsUnmapResources(1, &cudaResource, 0);
+    if (err != cudaSuccess) {
+        logger.log("Failed to unmap resource: " + std::string(cudaGetErrorString(err)));
+        return;
+    }
+
+    // Notify Unity that the texture has been updated
+    UpdateTextureFromUnity(cudaResource);
+    logger.log("Texture processed and Unity notified");
+}
+// Initialize CUDA interop
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API InitCudaInterop(ID3D11Texture2D * texture)
+{
+    if (!g_DXGIAdapter)
+    {
+        logger.log("DXGI Adapter not initialized");
+        return;
+    }
+    GetTextureInfo(texture);
+    // Get the CUDA device corresponding to the D3D11 device
+    int cudaDevice;
+    cudaError_t err = cudaD3D11GetDevice(&cudaDevice, g_DXGIAdapter);
+    if (err != cudaSuccess) {
+        logger.log("Failed to get CUDA device: " + std::string(cudaGetErrorString(err)));
+        return;
+    }
+
+    // Set the CUDA device
+    err = cudaSetDevice(cudaDevice);
+    if (err != cudaSuccess) {
+        logger.log("Failed to set CUDA device: " + std::string(cudaGetErrorString(err)));
+        return;
+    }
+
+    // Register the D3D11 texture with CUDA
+    err = cudaGraphicsD3D11RegisterResource(&cudaResource, texture, cudaGraphicsRegisterFlagsNone);
+    if (err != cudaSuccess) {
+        logger.log("Failed to register texture with CUDA: " + std::string(cudaGetErrorString(err)));
+        return;
+    }
+
+    logger.log("CUDA interop initialized successfully");
+
+    ProcessTextureWithCuda();
+}
+
+
+
+
+
+

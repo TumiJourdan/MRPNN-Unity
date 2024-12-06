@@ -1,0 +1,29 @@
+#pragma kernel CSMain
+
+// Textures
+RWTexture2D<float2> _AccumTex;    // Accumulation texture (RGBA)
+Texture2D<float2> _Transmittance;  // Current transmittance texture (single channel)
+
+
+[numthreads(8, 8, 1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // Fetch the current transmittance value from the texture
+    float currentTransmittance = _Transmittance[id.xy].r;
+
+    // Fetch the accumulated values from _AccumTex
+    float2 accumulated = _AccumTex[id.xy];
+
+    // Accumulated transmittance and frame count
+    float accumulatedTransmittance = accumulated.r;
+    float accumulatedFrames = accumulated.g;
+
+    // Update the accumulated transmittance
+    accumulatedTransmittance = (accumulatedTransmittance * accumulatedFrames + currentTransmittance) / (accumulatedFrames + 1.0);
+
+    // Update the frame counter
+    accumulatedFrames += 1.0;
+
+    // Write the updated values back to _AccumTex
+    _AccumTex[id.xy] = float2(currentTransmittance, accumulatedFrames);
+}

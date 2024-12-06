@@ -1,0 +1,4 @@
+LIBRARY VOLUMERENDER  
+EXPORTS
+    UnityPluginLoad
+    UnityPluginUnload
