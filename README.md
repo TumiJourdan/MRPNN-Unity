@@ -12,7 +12,7 @@ This project integrates the neural network developed by [Jinkai Hu, Chengzhong Y
 - CUDA 11.8
 - Windows
 - Nvidia GPU that supports sm_75 or sm_86
-- Visual Studio 16 2019
+- Visual Studio 16 2019  
 Tested with Geforce RTX3060
 
 ### To build on Windows:
