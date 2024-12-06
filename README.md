@@ -3,7 +3,9 @@
 ![A funny dog GIF](./ReadMeResources/DemogGif.gif)
 ![A funny dog GIF](./ReadMeResources/poster.png)
 ---
-This project integrates the neural network developed by Jinkai Hu and Chengzhong Yu and Hongli Liu and Ling-qi Yan and Yiqian Wu and Xiaogang Jin, their project at  [github link](https://github.com/What-a-stupid-username/MRPNN/blob/main/README.md) into the unity graphics pipeline. 
+
+This project integrates the neural network developed by [Jinkai Hu, Chengzhong Yu and Hongli Liu, Ling-qi Yan, Yiqian Wu and Xiaogang Jin](https://github.com/What-a-stupid-username/MRPNN/blob/main/README.md) into the unity graphics pipeline. 
+
 ---
 ## Running program. 
 ### Requirements
